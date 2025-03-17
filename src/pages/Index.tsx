@@ -22,7 +22,13 @@ const Index = () => {
       setLoading(true);
       try {
         const result = await getBookmarks();
-        setBookmarks(Array.isArray(result) ? result : []);
+        if (Array.isArray(result)) {
+          setBookmarks(result);
+        } else {
+          // Handle promise returned from getBookmarks
+          const bookmarksData = await result;
+          setBookmarks(bookmarksData);
+        }
       } catch (error) {
         console.error('Error fetching bookmarks:', error);
         toast({
@@ -38,12 +44,28 @@ const Index = () => {
     fetchBookmarks();
   }, [toast]);
   
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     if (!query.trim()) {
       setSearchResults(null);
       return;
     }
-    setSearchResults(searchBookmarks(query));
+    
+    const results = await searchBookmarks(query);
+    if (Array.isArray(results)) {
+      setSearchResults(results);
+    } else {
+      // Handle promise returned from searchBookmarks
+      results.then(searchData => {
+        setSearchResults(searchData);
+      }).catch(error => {
+        console.error('Error searching bookmarks:', error);
+        toast({
+          title: "Error searching bookmarks",
+          description: "There was a problem with your search.",
+          variant: "destructive"
+        });
+      });
+    }
   };
   
   const handleAddBookmark = (data: any) => {
@@ -77,6 +99,11 @@ const Index = () => {
             variant: "destructive"
           });
         } else {
+          // In extension mode, we'll update our state to reflect the Chrome bookmark
+          if (newChromeBookmark) {
+            newBookmark.id = newChromeBookmark.id;
+            newBookmark.collectionId = newChromeBookmark.parentId || null;
+          }
           setBookmarks(prev => [newBookmark, ...prev]);
           toast({
             title: "Bookmark added",

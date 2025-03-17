@@ -136,16 +136,17 @@ export const getBookmarks = (): Promise<Bookmark[]> | Bookmark[] => {
         
         // Recursive function to flatten bookmark tree
         const processNode = (node: chrome.bookmarks.BookmarkTreeNode) => {
+          // Only process nodes with URLs (actual bookmarks, not folders)
           if (node.url) {
             bookmarks.push({
               id: node.id,
-              title: node.title,
+              title: node.title || extractDomain(node.url),
               url: node.url,
               favicon: `https://www.google.com/s2/favicons?domain=${node.url}&sz=128`,
-              description: '',
-              tags: [],
-              createdAt: new Date(node.dateAdded || Date.now()).toISOString(),
-              lastVisited: null,
+              description: '', // Chrome API doesn't provide descriptions
+              tags: [], // Chrome API doesn't have tags, could infer from folder structure
+              createdAt: node.dateAdded ? new Date(node.dateAdded).toISOString() : new Date().toISOString(),
+              lastVisited: null, // Chrome API doesn't track this
               collectionId: node.parentId || null,
               isArchived: false,
               isReadLater: false,
@@ -153,23 +154,42 @@ export const getBookmarks = (): Promise<Bookmark[]> | Bookmark[] => {
             });
           }
           
+          // Process children recursively
           if (node.children) {
             node.children.forEach(processNode);
           }
         };
         
+        // Start processing from the root
         bookmarkTreeNodes.forEach(processNode);
         resolve(bookmarks);
       });
     } else {
+      console.warn('Chrome bookmarks API not available, using mock data');
       resolve([...mockBookmarks]);
     }
   });
 };
 
 // Get bookmarks by collection
-export const getBookmarksByCollection = (collectionId: string | null): Bookmark[] => {
-  return mockBookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived);
+export const getBookmarksByCollection = (collectionId: string | null): Promise<Bookmark[]> | Bookmark[] => {
+  if (!isExtension()) {
+    return mockBookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived);
+  }
+  
+  return new Promise((resolve) => {
+    getBookmarks().then((allBookmarks) => {
+      if (Array.isArray(allBookmarks)) {
+        resolve(allBookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived));
+      } else {
+        allBookmarks.then(bookmarks => {
+          resolve(bookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived));
+        });
+      }
+    }).catch(() => {
+      resolve(mockBookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived));
+    });
+  });
 };
 
 // Get reading list (saved for later)
@@ -178,40 +198,45 @@ export const getReadingList = (): Bookmark[] => {
 };
 
 // Get all collections
-export const getCollections = (): Collection[] => {
+export const getCollections = (): Promise<Collection[]> | Collection[] => {
   if (!isExtension()) {
     return [...mockCollections];
   }
   
-  // Get collections from Chrome's bookmark folders
-  const collections: Collection[] = [];
-  
-  if (chrome && chrome.bookmarks) {
-    chrome.bookmarks.getTree((bookmarkTreeNodes) => {
-      const processNode = (node: chrome.bookmarks.BookmarkTreeNode) => {
-        if (node.children && !node.url) {
-          // Skip the root node and bookmarks bar/other bookmarks default folders
-          if (node.id !== '0' && node.id !== '1' && node.id !== '2') {
-            collections.push({
-              id: node.id,
-              name: node.title,
-              description: '',
-              icon: 'Folder',
-              color: generateRandomColor(),
-              bookmarkCount: node.children.filter(child => !!child.url).length,
-              createdAt: new Date(node.dateAdded || Date.now()).toISOString()
-            });
+  return new Promise((resolve) => {
+    if (chrome && chrome.bookmarks) {
+      chrome.bookmarks.getTree((bookmarkTreeNodes) => {
+        const collections: Collection[] = [];
+        
+        const processNode = (node: chrome.bookmarks.BookmarkTreeNode) => {
+          // Only process folders (nodes with children but no URL)
+          if (node.children && !node.url) {
+            // Skip the root node and bookmarks bar/other bookmarks default folders
+            if (node.id !== '0' && node.id !== '1' && node.id !== '2') {
+              collections.push({
+                id: node.id,
+                name: node.title,
+                description: '',
+                icon: 'Folder',
+                color: generateRandomColor(),
+                bookmarkCount: node.children.filter(child => !!child.url).length,
+                createdAt: node.dateAdded ? new Date(node.dateAdded).toISOString() : new Date().toISOString()
+              });
+            }
+            
+            // Process child folders recursively
+            node.children.forEach(processNode);
           }
-          
-          node.children.forEach(processNode);
-        }
-      };
-      
-      bookmarkTreeNodes.forEach(processNode);
-    });
-  }
-  
-  return collections.length > 0 ? collections : [...mockCollections];
+        };
+        
+        bookmarkTreeNodes.forEach(processNode);
+        resolve(collections);
+      });
+    } else {
+      console.warn('Chrome bookmarks API not available, using mock data');
+      resolve([...mockCollections]);
+    }
+  });
 };
 
 const generateRandomColor = (): string => {
@@ -220,21 +245,75 @@ const generateRandomColor = (): string => {
 };
 
 // Get collection by ID
-export const getCollectionById = (id: string): Collection | undefined => {
-  return mockCollections.find(collection => collection.id === id);
+export const getCollectionById = (id: string): Promise<Collection | undefined> | Collection | undefined => {
+  if (!isExtension()) {
+    return mockCollections.find(collection => collection.id === id);
+  }
+  
+  return new Promise((resolve) => {
+    getCollections().then((collections) => {
+      if (Array.isArray(collections)) {
+        resolve(collections.find(collection => collection.id === id));
+      } else {
+        collections.then(cols => {
+          resolve(cols.find(collection => collection.id === id));
+        });
+      }
+    }).catch(() => {
+      resolve(mockCollections.find(collection => collection.id === id));
+    });
+  });
 };
 
 // Search bookmarks
-export const searchBookmarks = (query: string): Bookmark[] => {
+export const searchBookmarks = (query: string): Promise<Bookmark[]> | Bookmark[] => {
   const lowerQuery = query.toLowerCase();
-  return mockBookmarks.filter(
-    bookmark => 
-      !bookmark.isArchived && 
-      (bookmark.title.toLowerCase().includes(lowerQuery) || 
-       bookmark.url.toLowerCase().includes(lowerQuery) || 
-       bookmark.description.toLowerCase().includes(lowerQuery) ||
-       bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
-  );
+  
+  if (!isExtension()) {
+    return mockBookmarks.filter(
+      bookmark => 
+        !bookmark.isArchived && 
+        (bookmark.title.toLowerCase().includes(lowerQuery) || 
+         bookmark.url.toLowerCase().includes(lowerQuery) || 
+         bookmark.description.toLowerCase().includes(lowerQuery) ||
+         bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
+    );
+  }
+  
+  return new Promise((resolve) => {
+    getBookmarks().then((bookmarks) => {
+      if (Array.isArray(bookmarks)) {
+        resolve(bookmarks.filter(
+          bookmark => 
+            !bookmark.isArchived && 
+            (bookmark.title.toLowerCase().includes(lowerQuery) || 
+             bookmark.url.toLowerCase().includes(lowerQuery) || 
+             bookmark.description.toLowerCase().includes(lowerQuery) ||
+             bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
+        ));
+      } else {
+        bookmarks.then(bms => {
+          resolve(bms.filter(
+            bookmark => 
+              !bookmark.isArchived && 
+              (bookmark.title.toLowerCase().includes(lowerQuery) || 
+               bookmark.url.toLowerCase().includes(lowerQuery) || 
+               bookmark.description.toLowerCase().includes(lowerQuery) ||
+               bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
+          ));
+        });
+      }
+    }).catch(() => {
+      resolve(mockBookmarks.filter(
+        bookmark => 
+          !bookmark.isArchived && 
+          (bookmark.title.toLowerCase().includes(lowerQuery) || 
+           bookmark.url.toLowerCase().includes(lowerQuery) || 
+           bookmark.description.toLowerCase().includes(lowerQuery) ||
+           bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
+      ));
+    });
+  });
 };
 
 // Get tags
