@@ -119,45 +119,51 @@ const mockCollections: Collection[] = [
 ];
 
 // Check if we're running in a Chrome extension context
-const isExtension = !!window.chrome && !!chrome.runtime && !!chrome.runtime.id;
+const isExtension = (): boolean => {
+  return typeof chrome !== 'undefined' && !!chrome.runtime && !!chrome.runtime.id;
+};
 
 // Get all bookmarks
 export const getBookmarks = (): Promise<Bookmark[]> | Bookmark[] => {
-  if (!isExtension) {
+  if (!isExtension()) {
     return [...mockBookmarks];
   }
   
   return new Promise((resolve) => {
-    chrome.bookmarks.getTree((bookmarkTreeNodes) => {
-      const bookmarks: Bookmark[] = [];
-      
-      // Recursive function to flatten bookmark tree
-      const processNode = (node: chrome.bookmarks.BookmarkTreeNode) => {
-        if (node.url) {
-          bookmarks.push({
-            id: node.id,
-            title: node.title,
-            url: node.url,
-            favicon: `https://www.google.com/s2/favicons?domain=${node.url}&sz=128`,
-            description: '',
-            tags: [],
-            createdAt: new Date(node.dateAdded || Date.now()).toISOString(),
-            lastVisited: null,
-            collectionId: node.parentId,
-            isArchived: false,
-            isReadLater: false,
-            visitCount: 0
-          });
-        }
+    if (chrome && chrome.bookmarks) {
+      chrome.bookmarks.getTree((bookmarkTreeNodes) => {
+        const bookmarks: Bookmark[] = [];
         
-        if (node.children) {
-          node.children.forEach(processNode);
-        }
-      };
-      
-      bookmarkTreeNodes.forEach(processNode);
-      resolve(bookmarks);
-    });
+        // Recursive function to flatten bookmark tree
+        const processNode = (node: chrome.bookmarks.BookmarkTreeNode) => {
+          if (node.url) {
+            bookmarks.push({
+              id: node.id,
+              title: node.title,
+              url: node.url,
+              favicon: `https://www.google.com/s2/favicons?domain=${node.url}&sz=128`,
+              description: '',
+              tags: [],
+              createdAt: new Date(node.dateAdded || Date.now()).toISOString(),
+              lastVisited: null,
+              collectionId: node.parentId || null,
+              isArchived: false,
+              isReadLater: false,
+              visitCount: 0
+            });
+          }
+          
+          if (node.children) {
+            node.children.forEach(processNode);
+          }
+        };
+        
+        bookmarkTreeNodes.forEach(processNode);
+        resolve(bookmarks);
+      });
+    } else {
+      resolve([...mockBookmarks]);
+    }
   });
 };
 
@@ -173,36 +179,39 @@ export const getReadingList = (): Bookmark[] => {
 
 // Get all collections
 export const getCollections = (): Collection[] => {
-  if (!isExtension) {
+  if (!isExtension()) {
     return [...mockCollections];
   }
   
   // Get collections from Chrome's bookmark folders
   const collections: Collection[] = [];
-  chrome.bookmarks.getTree((bookmarkTreeNodes) => {
-    const processNode = (node: chrome.bookmarks.BookmarkTreeNode) => {
-      if (node.children && !node.url) {
-        // Skip the root node and bookmarks bar/other bookmarks default folders
-        if (node.id !== '0' && node.id !== '1' && node.id !== '2') {
-          collections.push({
-            id: node.id,
-            name: node.title,
-            description: '',
-            icon: 'Folder',
-            color: generateRandomColor(),
-            bookmarkCount: node.children.filter(child => !!child.url).length,
-            createdAt: new Date(node.dateAdded || Date.now()).toISOString()
-          });
-        }
-        
-        node.children.forEach(processNode);
-      }
-    };
-    
-    bookmarkTreeNodes.forEach(processNode);
-  });
   
-  return collections;
+  if (chrome && chrome.bookmarks) {
+    chrome.bookmarks.getTree((bookmarkTreeNodes) => {
+      const processNode = (node: chrome.bookmarks.BookmarkTreeNode) => {
+        if (node.children && !node.url) {
+          // Skip the root node and bookmarks bar/other bookmarks default folders
+          if (node.id !== '0' && node.id !== '1' && node.id !== '2') {
+            collections.push({
+              id: node.id,
+              name: node.title,
+              description: '',
+              icon: 'Folder',
+              color: generateRandomColor(),
+              bookmarkCount: node.children.filter(child => !!child.url).length,
+              createdAt: new Date(node.dateAdded || Date.now()).toISOString()
+            });
+          }
+          
+          node.children.forEach(processNode);
+        }
+      };
+      
+      bookmarkTreeNodes.forEach(processNode);
+    });
+  }
+  
+  return collections.length > 0 ? collections : [...mockCollections];
 };
 
 const generateRandomColor = (): string => {

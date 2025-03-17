@@ -63,13 +63,13 @@ const Index = () => {
     };
     
     // If we're in a Chrome extension environment, add the bookmark using Chrome API
-    if (window.chrome && chrome.bookmarks) {
+    if (typeof chrome !== 'undefined' && chrome.bookmarks) {
       chrome.bookmarks.create({
         parentId: data.collectionId || '1', // Default to bookmarks bar if no collection
         title: data.title,
         url: data.url
       }, (newChromeBookmark) => {
-        if (chrome.runtime.lastError) {
+        if (chrome.runtime && chrome.runtime.lastError) {
           console.error(chrome.runtime.lastError);
           toast({
             title: "Error adding bookmark",
