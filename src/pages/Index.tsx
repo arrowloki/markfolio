@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { SearchBar } from '../components/SearchBar';
 import { BookmarkCard } from '../components/BookmarkCard';
@@ -8,12 +8,35 @@ import { AddBookmarkModal } from '../components/AddBookmarkModal';
 import { getBookmarks, searchBookmarks, generateId } from '../lib/bookmarkHelpers';
 import { Bookmark, Plus, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Bookmark as BookmarkType } from '../lib/types';
 
 const Index = () => {
-  const [bookmarks, setBookmarks] = useState(getBookmarks());
-  const [searchResults, setSearchResults] = useState<typeof bookmarks | null>(null);
+  const [bookmarks, setBookmarks] = useState<BookmarkType[]>([]);
+  const [searchResults, setSearchResults] = useState<BookmarkType[] | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  useEffect(() => {
+    const fetchBookmarks = async () => {
+      setLoading(true);
+      try {
+        const result = await getBookmarks();
+        setBookmarks(Array.isArray(result) ? result : []);
+      } catch (error) {
+        console.error('Error fetching bookmarks:', error);
+        toast({
+          title: "Error loading bookmarks",
+          description: "There was a problem loading your bookmarks.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchBookmarks();
+  }, [toast]);
   
   const handleSearch = (query: string) => {
     if (!query.trim()) {
@@ -39,12 +62,36 @@ const Index = () => {
       visitCount: 0
     };
     
-    setBookmarks(prev => [newBookmark, ...prev]);
-    
-    toast({
-      title: "Bookmark added",
-      description: "Your bookmark has been added successfully.",
-    });
+    // If we're in a Chrome extension environment, add the bookmark using Chrome API
+    if (window.chrome && chrome.bookmarks) {
+      chrome.bookmarks.create({
+        parentId: data.collectionId || '1', // Default to bookmarks bar if no collection
+        title: data.title,
+        url: data.url
+      }, (newChromeBookmark) => {
+        if (chrome.runtime.lastError) {
+          console.error(chrome.runtime.lastError);
+          toast({
+            title: "Error adding bookmark",
+            description: chrome.runtime.lastError.message,
+            variant: "destructive"
+          });
+        } else {
+          setBookmarks(prev => [newBookmark, ...prev]);
+          toast({
+            title: "Bookmark added",
+            description: "Your bookmark has been added successfully.",
+          });
+        }
+      });
+    } else {
+      // Fallback for non-extension environment
+      setBookmarks(prev => [newBookmark, ...prev]);
+      toast({
+        title: "Bookmark added",
+        description: "Your bookmark has been added successfully.",
+      });
+    }
   };
   
   const displayedBookmarks = searchResults !== null ? searchResults : bookmarks;
@@ -84,7 +131,11 @@ const Index = () => {
           <SearchBar onSearch={handleSearch} />
         </div>
         
-        {displayedBookmarks.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          </div>
+        ) : displayedBookmarks.length === 0 ? (
           <EmptyState 
             type="bookmarks" 
             onAction={() => setIsModalOpen(true)} 

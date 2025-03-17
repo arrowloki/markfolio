@@ -1,36 +1,13 @@
 
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
-import { SearchBar } from '../components/SearchBar';
 import { CollectionCard } from '../components/CollectionCard';
 import { EmptyState } from '../components/EmptyState';
 import { getCollections } from '../lib/bookmarkHelpers';
-import { Collection, LayoutGrid, Plus } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { FolderIcon, Plus, Filter } from 'lucide-react';
 
 const Collections = () => {
   const [collections, setCollections] = useState(getCollections());
-  const [searchQuery, setSearchQuery] = useState('');
-  const { toast } = useToast();
-  
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-  };
-  
-  const filteredCollections = searchQuery
-    ? collections.filter(collection => 
-        collection.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        collection.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : collections;
-  
-  const handleCreateCollection = () => {
-    // This would open a modal to create a collection
-    toast({
-      title: "Coming soon",
-      description: "Collection creation will be available in the next update.",
-    });
-  };
   
   return (
     <Layout>
@@ -41,31 +18,32 @@ const Collections = () => {
               Collections
             </span>
             <h1 className="text-3xl font-display font-bold mt-2">Your Collections</h1>
-            <p className="text-muted-foreground mt-2">Organize bookmarks into meaningful collections.</p>
+            <p className="text-muted-foreground mt-2">Organize your bookmarks into themed collections.</p>
           </div>
           
-          <button
-            onClick={handleCreateCollection}
-            className="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 text-sm font-medium transition-colors w-full md:w-auto"
-            aria-label="Create collection"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Collection
-          </button>
+          <div className="flex space-x-2">
+            <button
+              className="inline-flex items-center justify-center rounded-lg border border-border bg-white/50 hover:bg-secondary px-4 py-2 text-sm font-medium transition-colors"
+              aria-label="Filter options"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filter
+            </button>
+            <button
+              className="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 text-sm font-medium transition-colors"
+              aria-label="Add collection"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Collection
+            </button>
+          </div>
         </div>
         
-        <div className="mb-8 max-w-xl">
-          <SearchBar onSearch={handleSearch} placeholder="Search collections..." />
-        </div>
-        
-        {filteredCollections.length === 0 ? (
-          <EmptyState 
-            type="collections" 
-            onAction={handleCreateCollection} 
-          />
+        {collections.length === 0 ? (
+          <EmptyState type="collections" onAction={() => {}} />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredCollections.map(collection => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {collections.map(collection => (
               <CollectionCard key={collection.id} collection={collection} />
             ))}
           </div>
