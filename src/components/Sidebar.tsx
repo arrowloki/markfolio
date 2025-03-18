@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Bookmark, BookmarkPlus, LayoutGrid, BarChart, Settings, BookOpen, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { getCollections } from '../lib/bookmarkHelpers';
 import { Collection } from '../lib/types';
@@ -61,28 +61,28 @@ export const Sidebar: React.FC = () => {
             icon={<BookmarkPlus />} 
             label="All Bookmarks" 
             isCollapsed={isCollapsed} 
-            isActive={location.pathname === '/'}
+            isActive={location.pathname === '/' || location.hash === '#/'}
           />
           <NavItem 
             to="/collections" 
             icon={<LayoutGrid />} 
             label="Collections" 
             isCollapsed={isCollapsed} 
-            isActive={location.pathname === '/collections'}
+            isActive={location.pathname === '/collections' || location.hash === '#/collections'}
           />
           <NavItem 
             to="/reading-list" 
             icon={<BookOpen />} 
             label="Reading List" 
             isCollapsed={isCollapsed} 
-            isActive={location.pathname === '/reading-list'}
+            isActive={location.pathname === '/reading-list' || location.hash === '#/reading-list'}
           />
           <NavItem 
             to="/analytics" 
             icon={<BarChart />} 
             label="Analytics" 
             isCollapsed={isCollapsed} 
-            isActive={location.pathname === '/analytics'}
+            isActive={location.pathname === '/analytics' || location.hash === '#/analytics'}
           />
           
           {!isCollapsed && !loading && (
@@ -106,8 +106,7 @@ export const Sidebar: React.FC = () => {
                     to={`/collections/${collection.id}`}
                     label={collection.name}
                     isCollapsed={isCollapsed}
-                    isActive={location.pathname === `/collections/${collection.id}`}
-                    // We're using Icons dynamically here, but in a real implementation you'd need a mapping
+                    isActive={location.pathname === `/collections/${collection.id}` || location.hash === `#/collections/${collection.id}`}
                     icon={<div className={`h-3.5 w-3.5 rounded-full bg-${collection.color}-500`} />}
                     chip={collection.bookmarkCount > 0 ? collection.bookmarkCount.toString() : undefined}
                   />
@@ -142,7 +141,7 @@ interface NavItemProps {
 
 const NavItem: React.FC<NavItemProps> = ({ to, icon, label, isCollapsed, isActive, chip }) => {
   return (
-    <NavLink
+    <Link
       to={to}
       className={`flex items-center px-3 py-2.5 rounded-md transition-all group ${
         isActive 
@@ -164,6 +163,6 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, label, isCollapsed, isActiv
           )}
         </div>
       )}
-    </NavLink>
+    </Link>
   );
 };
