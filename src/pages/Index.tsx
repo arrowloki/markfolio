@@ -22,13 +22,7 @@ const Index = () => {
       setLoading(true);
       try {
         const result = await getBookmarks();
-        if (Array.isArray(result)) {
-          setBookmarks(result);
-        } else {
-          // Handle promise returned from getBookmarks
-          const bookmarksData = await result;
-          setBookmarks(bookmarksData);
-        }
+        setBookmarks(result);
       } catch (error) {
         console.error('Error fetching bookmarks:', error);
         toast({
@@ -50,20 +44,15 @@ const Index = () => {
       return;
     }
     
-    const results = await searchBookmarks(query);
-    if (Array.isArray(results)) {
+    try {
+      const results = await searchBookmarks(query);
       setSearchResults(results);
-    } else {
-      // Handle promise returned from searchBookmarks
-      results.then(searchData => {
-        setSearchResults(searchData);
-      }).catch(error => {
-        console.error('Error searching bookmarks:', error);
-        toast({
-          title: "Error searching bookmarks",
-          description: "There was a problem with your search.",
-          variant: "destructive"
-        });
+    } catch (error) {
+      console.error('Error searching bookmarks:', error);
+      toast({
+        title: "Error searching bookmarks",
+        description: "There was a problem with your search.",
+        variant: "destructive"
       });
     }
   };

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Bookmark, Link2, Tag } from 'lucide-react';
 import { Collection } from '../lib/types';
 import { getCollections, extractDomain } from '../lib/bookmarkHelpers';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddBookmarkModalProps {
   isOpen: boolean;
@@ -22,12 +23,31 @@ export const AddBookmarkModal: React.FC<AddBookmarkModalProps> = ({
   const [collectionId, setCollectionId] = useState('');
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isReadLater, setIsReadLater] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
   
   useEffect(() => {
     if (isOpen) {
-      setCollections(getCollections());
+      const fetchCollections = async () => {
+        setLoading(true);
+        try {
+          const result = await getCollections();
+          setCollections(result);
+        } catch (error) {
+          console.error('Error fetching collections:', error);
+          toast({
+            title: "Error loading collections",
+            description: "There was a problem loading your collections.",
+            variant: "destructive"
+          });
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchCollections();
     }
-  }, [isOpen]);
+  }, [isOpen, toast]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,13 +1,38 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { CollectionCard } from '../components/CollectionCard';
 import { EmptyState } from '../components/EmptyState';
 import { getCollections } from '../lib/bookmarkHelpers';
 import { FolderIcon, Plus, Filter } from 'lucide-react';
+import { Collection } from '../lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 const Collections = () => {
-  const [collections, setCollections] = useState(getCollections());
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    const fetchCollections = async () => {
+      setLoading(true);
+      try {
+        const result = await getCollections();
+        setCollections(result);
+      } catch (error) {
+        console.error('Error fetching collections:', error);
+        toast({
+          title: "Error loading collections",
+          description: "There was a problem loading your collections.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCollections();
+  }, [toast]);
   
   return (
     <Layout>
@@ -39,7 +64,11 @@ const Collections = () => {
           </div>
         </div>
         
-        {collections.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          </div>
+        ) : collections.length === 0 ? (
           <EmptyState type="collections" onAction={() => {}} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

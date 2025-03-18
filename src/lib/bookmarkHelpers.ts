@@ -124,13 +124,13 @@ const isExtension = (): boolean => {
 };
 
 // Get all bookmarks
-export const getBookmarks = (): Promise<Bookmark[]> | Bookmark[] => {
+export const getBookmarks = async (): Promise<Bookmark[]> => {
   if (!isExtension()) {
     return [...mockBookmarks];
   }
   
-  return new Promise((resolve) => {
-    if (chrome && chrome.bookmarks) {
+  return new Promise<Bookmark[]>((resolve) => {
+    if (typeof chrome !== 'undefined' && chrome.bookmarks) {
       chrome.bookmarks.getTree((bookmarkTreeNodes) => {
         const bookmarks: Bookmark[] = [];
         
@@ -172,39 +172,33 @@ export const getBookmarks = (): Promise<Bookmark[]> | Bookmark[] => {
 };
 
 // Get bookmarks by collection
-export const getBookmarksByCollection = (collectionId: string | null): Promise<Bookmark[]> | Bookmark[] => {
+export const getBookmarksByCollection = async (collectionId: string | null): Promise<Bookmark[]> => {
   if (!isExtension()) {
     return mockBookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived);
   }
   
-  return new Promise((resolve) => {
-    getBookmarks().then((allBookmarks) => {
-      if (Array.isArray(allBookmarks)) {
-        resolve(allBookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived));
-      } else {
-        allBookmarks.then(bookmarks => {
-          resolve(bookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived));
-        });
-      }
-    }).catch(() => {
-      resolve(mockBookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived));
-    });
-  });
+  const allBookmarks = await getBookmarks();
+  return allBookmarks.filter(bookmark => bookmark.collectionId === collectionId && !bookmark.isArchived);
 };
 
 // Get reading list (saved for later)
-export const getReadingList = (): Bookmark[] => {
-  return mockBookmarks.filter(bookmark => bookmark.isReadLater && !bookmark.isArchived);
+export const getReadingList = async (): Promise<Bookmark[]> => {
+  if (!isExtension()) {
+    return mockBookmarks.filter(bookmark => bookmark.isReadLater && !bookmark.isArchived);
+  }
+  
+  const allBookmarks = await getBookmarks();
+  return allBookmarks.filter(bookmark => bookmark.isReadLater && !bookmark.isArchived);
 };
 
 // Get all collections
-export const getCollections = (): Promise<Collection[]> | Collection[] => {
+export const getCollections = async (): Promise<Collection[]> => {
   if (!isExtension()) {
     return [...mockCollections];
   }
   
-  return new Promise((resolve) => {
-    if (chrome && chrome.bookmarks) {
+  return new Promise<Collection[]>((resolve) => {
+    if (typeof chrome !== 'undefined' && chrome.bookmarks) {
       chrome.bookmarks.getTree((bookmarkTreeNodes) => {
         const collections: Collection[] = [];
         
@@ -245,82 +239,36 @@ const generateRandomColor = (): string => {
 };
 
 // Get collection by ID
-export const getCollectionById = (id: string): Promise<Collection | undefined> | Collection | undefined => {
+export const getCollectionById = async (id: string): Promise<Collection | undefined> => {
   if (!isExtension()) {
     return mockCollections.find(collection => collection.id === id);
   }
   
-  return new Promise((resolve) => {
-    getCollections().then((collections) => {
-      if (Array.isArray(collections)) {
-        resolve(collections.find(collection => collection.id === id));
-      } else {
-        collections.then(cols => {
-          resolve(cols.find(collection => collection.id === id));
-        });
-      }
-    }).catch(() => {
-      resolve(mockCollections.find(collection => collection.id === id));
-    });
-  });
+  const collections = await getCollections();
+  return collections.find(collection => collection.id === id);
 };
 
 // Search bookmarks
-export const searchBookmarks = (query: string): Promise<Bookmark[]> | Bookmark[] => {
+export const searchBookmarks = async (query: string): Promise<Bookmark[]> => {
   const lowerQuery = query.toLowerCase();
+  const allBookmarks = await getBookmarks();
   
-  if (!isExtension()) {
-    return mockBookmarks.filter(
-      bookmark => 
-        !bookmark.isArchived && 
-        (bookmark.title.toLowerCase().includes(lowerQuery) || 
-         bookmark.url.toLowerCase().includes(lowerQuery) || 
-         bookmark.description.toLowerCase().includes(lowerQuery) ||
-         bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
-    );
-  }
-  
-  return new Promise((resolve) => {
-    getBookmarks().then((bookmarks) => {
-      if (Array.isArray(bookmarks)) {
-        resolve(bookmarks.filter(
-          bookmark => 
-            !bookmark.isArchived && 
-            (bookmark.title.toLowerCase().includes(lowerQuery) || 
-             bookmark.url.toLowerCase().includes(lowerQuery) || 
-             bookmark.description.toLowerCase().includes(lowerQuery) ||
-             bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
-        ));
-      } else {
-        bookmarks.then(bms => {
-          resolve(bms.filter(
-            bookmark => 
-              !bookmark.isArchived && 
-              (bookmark.title.toLowerCase().includes(lowerQuery) || 
-               bookmark.url.toLowerCase().includes(lowerQuery) || 
-               bookmark.description.toLowerCase().includes(lowerQuery) ||
-               bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
-          ));
-        });
-      }
-    }).catch(() => {
-      resolve(mockBookmarks.filter(
-        bookmark => 
-          !bookmark.isArchived && 
-          (bookmark.title.toLowerCase().includes(lowerQuery) || 
-           bookmark.url.toLowerCase().includes(lowerQuery) || 
-           bookmark.description.toLowerCase().includes(lowerQuery) ||
-           bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
-      ));
-    });
-  });
+  return allBookmarks.filter(
+    bookmark => 
+      !bookmark.isArchived && 
+      (bookmark.title.toLowerCase().includes(lowerQuery) || 
+       bookmark.url.toLowerCase().includes(lowerQuery) || 
+       bookmark.description.toLowerCase().includes(lowerQuery) ||
+       bookmark.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
+  );
 };
 
 // Get tags
-export const getTags = (): Tag[] => {
+export const getTags = async (): Promise<Tag[]> => {
   const tagMap = new Map<string, number>();
+  const bookmarks = await getBookmarks();
   
-  mockBookmarks.forEach(bookmark => {
+  bookmarks.forEach(bookmark => {
     if (!bookmark.isArchived) {
       bookmark.tags.forEach(tag => {
         const count = tagMap.get(tag) || 0;
@@ -370,8 +318,9 @@ export const formatDate = (dateString: string | null): string => {
 };
 
 // Get analytics data
-export const getAnalyticsData = (): AnalyticsData => {
-  const nonArchivedBookmarks = mockBookmarks.filter(bookmark => !bookmark.isArchived);
+export const getAnalyticsData = async (): Promise<AnalyticsData> => {
+  const allBookmarks = await getBookmarks();
+  const nonArchivedBookmarks = allBookmarks.filter(bookmark => !bookmark.isArchived);
   
   // Most visited
   const mostVisited = [...nonArchivedBookmarks]

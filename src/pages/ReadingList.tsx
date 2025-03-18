@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { SearchBar } from '../components/SearchBar';
 import { BookmarkCard } from '../components/BookmarkCard';
@@ -7,22 +7,55 @@ import { EmptyState } from '../components/EmptyState';
 import { getReadingList, searchBookmarks } from '../lib/bookmarkHelpers';
 import { BookOpen, Filter, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Bookmark } from '../lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 const ReadingList = () => {
-  const [readingList, setReadingList] = useState(getReadingList());
-  const [searchResults, setSearchResults] = useState<typeof readingList | null>(null);
+  const [readingList, setReadingList] = useState<Bookmark[]>([]);
+  const [searchResults, setSearchResults] = useState<Bookmark[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   
-  const handleSearch = (query: string) => {
+  useEffect(() => {
+    const fetchReadingList = async () => {
+      setLoading(true);
+      try {
+        const result = await getReadingList();
+        setReadingList(result);
+      } catch (error) {
+        console.error('Error fetching reading list:', error);
+        toast({
+          title: "Error loading reading list",
+          description: "There was a problem loading your reading list.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReadingList();
+  }, [toast]);
+  
+  const handleSearch = async (query: string) => {
     if (!query.trim()) {
       setSearchResults(null);
       return;
     }
     
-    // Filter search results to only include items in the reading list
-    const allSearchResults = searchBookmarks(query);
-    const filteredResults = allSearchResults.filter(bookmark => bookmark.isReadLater);
-    
-    setSearchResults(filteredResults);
+    try {
+      // Filter search results to only include items in the reading list
+      const allSearchResults = await searchBookmarks(query);
+      const filteredResults = allSearchResults.filter(bookmark => bookmark.isReadLater);
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Error searching reading list:', error);
+      toast({
+        title: "Error searching reading list",
+        description: "There was a problem with your search.",
+        variant: "destructive"
+      });
+    }
   };
   
   const displayedBookmarks = searchResults !== null ? searchResults : readingList;
@@ -52,7 +85,11 @@ const ReadingList = () => {
           <SearchBar onSearch={handleSearch} placeholder="Search reading list..." />
         </div>
         
-        {displayedBookmarks.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          </div>
+        ) : displayedBookmarks.length === 0 ? (
           <EmptyState 
             type="reading-list" 
             onAction={() => window.location.href = "/"} 

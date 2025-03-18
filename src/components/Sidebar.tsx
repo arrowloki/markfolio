@@ -1,14 +1,38 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Bookmark, BookmarkPlus, LayoutGrid, BarChart, Settings, BookOpen, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { getCollections } from '../lib/bookmarkHelpers';
 import { Collection } from '../lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [collections, setCollections] = useState<Collection[]>(getCollections());
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    const fetchCollections = async () => {
+      setLoading(true);
+      try {
+        const result = await getCollections();
+        setCollections(result);
+      } catch (error) {
+        console.error('Error fetching collections:', error);
+        toast({
+          title: "Error loading collections",
+          description: "There was a problem loading your collections.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCollections();
+  }, [toast]);
   
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -61,7 +85,7 @@ export const Sidebar: React.FC = () => {
             isActive={location.pathname === '/analytics'}
           />
           
-          {!isCollapsed && (
+          {!isCollapsed && !loading && (
             <div className="mt-6 mb-3">
               <div className="flex items-center justify-between px-2 py-2">
                 <h2 className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
