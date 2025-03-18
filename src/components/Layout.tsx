@@ -14,7 +14,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen flex bg-background overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-auto transition-all duration-300 animate-fade-in">
-        <div className="container py-8 px-6 max-w-[1200px] mx-auto">
+        <div className="h-full py-6 px-4 max-w-full mx-auto">
           {children}
         </div>
       </main>

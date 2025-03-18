@@ -41,53 +41,53 @@ export const Sidebar: React.FC = () => {
   return (
     <div 
       className={`bg-white dark:bg-gray-900 border-r border-border h-screen transition-all duration-300 ease-in-out flex flex-col relative ${
-        isCollapsed ? 'w-[70px]' : 'w-[260px]'
+        isCollapsed ? 'w-[60px]' : 'w-[220px]'
       }`}
     >
-      <div className="flex items-center p-4 h-16 border-b border-border">
+      <div className="flex items-center p-3 h-14 border-b border-border">
         {!isCollapsed && (
-          <h1 className="text-lg font-semibold flex items-center space-x-2">
-            <Bookmark className="h-5 w-5 text-primary" />
+          <h1 className="text-base font-semibold flex items-center space-x-2">
+            <Bookmark className="h-4 w-4 text-primary" />
             <span className="animate-fade-in">Markfolio</span>
           </h1>
         )}
-        {isCollapsed && <Bookmark className="h-5 w-5 text-primary mx-auto" />}
+        {isCollapsed && <Bookmark className="h-4 w-4 text-primary mx-auto" />}
       </div>
       
-      <div className="flex-1 py-4 overflow-y-auto no-scrollbar">
+      <div className="flex-1 py-3 overflow-y-auto no-scrollbar">
         <nav className="space-y-1 px-2">
           <NavItem 
             to="/" 
-            icon={<BookmarkPlus />} 
+            icon={<BookmarkPlus className="h-4 w-4" />} 
             label="All Bookmarks" 
             isCollapsed={isCollapsed} 
             isActive={location.pathname === '/' || location.hash === '#/'}
           />
           <NavItem 
             to="/collections" 
-            icon={<LayoutGrid />} 
+            icon={<LayoutGrid className="h-4 w-4" />} 
             label="Collections" 
             isCollapsed={isCollapsed} 
             isActive={location.pathname === '/collections' || location.hash === '#/collections'}
           />
           <NavItem 
             to="/reading-list" 
-            icon={<BookOpen />} 
+            icon={<BookOpen className="h-4 w-4" />} 
             label="Reading List" 
             isCollapsed={isCollapsed} 
             isActive={location.pathname === '/reading-list' || location.hash === '#/reading-list'}
           />
           <NavItem 
             to="/analytics" 
-            icon={<BarChart />} 
+            icon={<BarChart className="h-4 w-4" />} 
             label="Analytics" 
             isCollapsed={isCollapsed} 
             isActive={location.pathname === '/analytics' || location.hash === '#/analytics'}
           />
           
           {!isCollapsed && !loading && (
-            <div className="mt-6 mb-3">
-              <div className="flex items-center justify-between px-2 py-2">
+            <div className="mt-5 mb-2">
+              <div className="flex items-center justify-between px-2 py-1">
                 <h2 className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
                   Collections
                 </h2>
@@ -95,11 +95,11 @@ export const Sidebar: React.FC = () => {
                   className="h-5 w-5 rounded-full flex items-center justify-center hover:bg-secondary text-muted-foreground transition-colors"
                   aria-label="Add collection"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-3 w-3" />
                 </button>
               </div>
               
-              <div className="mt-2 space-y-1">
+              <div className="mt-1 space-y-1">
                 {collections.map(collection => (
                   <NavItem 
                     key={collection.id}
@@ -107,7 +107,7 @@ export const Sidebar: React.FC = () => {
                     label={collection.name}
                     isCollapsed={isCollapsed}
                     isActive={location.pathname === `/collections/${collection.id}` || location.hash === `#/collections/${collection.id}`}
-                    icon={<div className={`h-3.5 w-3.5 rounded-full bg-${collection.color}-500`} />}
+                    icon={<div className={`h-3 w-3 rounded-full bg-${collection.color}-500`} />}
                     chip={collection.bookmarkCount > 0 ? collection.bookmarkCount.toString() : undefined}
                   />
                 ))}
@@ -120,10 +120,10 @@ export const Sidebar: React.FC = () => {
       <div className="border-t border-border p-2">
         <button
           onClick={toggleSidebar}
-          className="w-full flex items-center justify-center p-2 h-10 text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary transition-colors"
+          className="w-full flex items-center justify-center p-1 h-8 text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary transition-colors"
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
       </div>
     </div>
@@ -143,21 +143,21 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, label, isCollapsed, isActiv
   return (
     <Link
       to={to}
-      className={`flex items-center px-3 py-2.5 rounded-md transition-all group ${
+      className={`flex items-center px-2 py-2 rounded-md transition-all group ${
         isActive 
           ? 'bg-secondary text-foreground font-medium' 
           : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
       }`}
     >
-      <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+      <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
         {icon}
       </div>
       
       {!isCollapsed && (
-        <div className="ml-3 flex-1 flex items-center justify-between">
-          <span className="truncate">{label}</span>
+        <div className="ml-2 flex-1 flex items-center justify-between">
+          <span className="truncate text-sm">{label}</span>
           {chip && (
-            <span className="ml-auto rounded-full text-xs bg-background px-2 py-0.5">
+            <span className="ml-auto rounded-full text-xs bg-background px-1.5 py-0.5">
               {chip}
             </span>
           )}
